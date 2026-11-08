@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Shooter Forever</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #101827; --ink: #f1f5f9; --muted: #94a3b8; --card: #1e293b; --line: #334155;
+    --accent: #facc15; --accent-ink: #1e293b; --accent-shadow: #a16207; --good: #22c55e; --bad: #ef4444;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font-family: Fredoka, system-ui, sans-serif; }
+  body { overflow: hidden; user-select: none; -webkit-user-select: none; }
+  .screen { position: fixed; inset: 0; overflow: auto; }
+  .screen[hidden] { display: none; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 20px 16px 40px; }
+  h1 { font-size: clamp(38px, 9vw, 64px); margin: 18px 0 4px; text-align: center; color: var(--accent);
+       text-shadow: 0 4px 0 var(--accent-shadow), 0 0 30px rgba(250,204,21,.35); letter-spacing: 1px; }
+  .sub { text-align: center; color: var(--muted); margin: 0 0 18px; font-size: 18px; }
+  .coins { display: inline-flex; align-items: center; gap: 6px; background: #0b1220; border: 2px solid #38bdf8; color: #7dd3fc;
+           border-radius: 999px; padding: 4px 14px; font-weight: 700; font-size: 20px; }
+  .center { text-align: center; }
+  .btn { font: inherit; font-weight: 700; font-size: 20px; border: 0; border-radius: 14px; padding: 12px 22px; cursor: pointer;
+         background: var(--card); color: var(--ink); box-shadow: 0 4px 0 #0b1220; margin: 6px; }
+  .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #0b1220; }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); box-shadow: 0 4px 0 var(--accent-shadow); }
+  .btn.big { font-size: 26px; padding: 16px 34px; }
+  .menu { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 14px; }
+  .enemies { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-top: 22px; }
+  .enemy-card { background: var(--card); border-radius: 14px; padding: 10px 12px; width: 150px; text-align: center; }
+  .enemy-card canvas { width: 90px; height: 70px; }
+  .enemy-card b { display: block; }
+  .enemy-card small { color: var(--muted); }
+  .help { color: var(--muted); text-align: center; font-size: 15px; margin-top: 18px; line-height: 1.5; }
+
+  /* Workshop */
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .top h2 { margin: 0; font-size: 30px; color: var(--accent); }
+  #gun-preview { width: 100%; height: 170px; background: radial-gradient(circle at 50% 60%, #1e3a5f, #0b1220); border-radius: 18px; margin: 12px 0 4px; display: block; }
+  #gun-stats { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-bottom: 10px; }
+  #gun-stats span { background: var(--card); border-radius: 999px; padding: 3px 12px; font-size: 15px; }
+  .part { margin: 14px 0; }
+  .part h3 { margin: 0 0 6px; font-size: 20px; }
+  .part h3 small { color: var(--muted); font-weight: 500; font-size: 14px; }
+  .opts { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+  .opt { font: inherit; text-align: center; background: var(--card); color: var(--ink); border: 3px solid var(--line); border-radius: 14px;
+         padding: 8px 6px; cursor: pointer; }
+  .opt .i { font-size: 26px; display: block; }
+  .opt b { display: block; font-size: 17px; }
+  .opt small { color: var(--muted); display: block; font-size: 13px; min-height: 2.4em; }
+  .opt .price { display: block; margin-top: 4px; font-weight: 700; color: #7dd3fc; }
+  .opt.owned .price { color: var(--good); }
+  .opt.on { border-color: var(--accent); background: #3b3413; }
+  .opt.poor { opacity: .55; }
+
+  /* Game */
+  #game { overflow: hidden; touch-action: none; }
+  #cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; touch-action: none; }
+  #hud { position: absolute; left: 0; right: 0; top: 0; display: flex; justify-content: space-between; align-items: flex-start; padding: 10px 12px;
+         pointer-events: none; gap: 8px; }
+  .pill { background: rgba(11,18,32,.82); border-radius: 12px; padding: 6px 12px; font-weight: 700; font-size: 18px; }
+  #hp-bar { width: 160px; height: 14px; background: #3f1d1d; border-radius: 8px; overflow: hidden; margin-top: 4px; }
+  #hp-fill { height: 100%; background: linear-gradient(90deg, #22c55e, #4ade80); width: 100%; transition: width .15s; }
+  #ammo { text-align: right; }
+  #ammo .bt { font-size: 14px; color: var(--muted); display: block; }
+  #pause { pointer-events: auto; }
+  #banner { position: absolute; left: 0; right: 0; top: 30%; text-align: center; font-size: clamp(34px, 8vw, 60px); font-weight: 700;
+            color: var(--accent); text-shadow: 0 4px 0 #000; pointer-events: none; transition: opacity .4s; }
+  #reload-btn { position: absolute; right: 16px; bottom: 120px; display: none; pointer-events: auto; }
+  .touch #reload-btn { display: block; }
+  #msg { position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); background: rgba(11,18,32,.88); padding: 8px 16px;
+         border-radius: 12px; font-weight: 600; pointer-events: none; transition: opacity .3s; white-space: nowrap; }
+  .overlay { position: absolute; inset: 0; background: rgba(5,10,20,.8); display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .overlay[hidden] { display: none; }
+  .panel { background: var(--card); border-radius: 20px; padding: 22px; text-align: center; max-width: 420px; width: 100%; }
+  .panel h2 { margin: 0 0 8px; font-size: 34px; color: var(--accent); }
+  .panel p { font-size: 19px; margin: 6px 0; }
+</style>
+</head>
+<body>
+
+<section class="screen" id="home">
+  <div class="wrap">
+    <h1>Shooter Forever</h1>
+    <p class="sub">Build your own gun. Fight the animals. The waves never stop!</p>
+    <p class="center"><span class="coins">⚡ <span class="coin-count">0</span> electrocoins</span></p>
+    <div class="menu">
+      <button class="btn primary big" id="m-play">▶ Play</button>
+      <button class="btn" id="m-shop">🔧 Gun Workshop</button>
+    </div>
+    <p class="center" id="best" style="color:var(--muted)"></p>
+    <div class="enemies">
+      <div class="enemy-card"><canvas data-enemy="duck" width="180" height="140"></canvas><b>Lazer Duck</b><small>Charges up a big lazer. Move out of the red line!</small></div>
+      <div class="enemy-card"><canvas data-enemy="cow" width="180" height="140"></canvas><b>Cannon Cow</b><small>Slow, tough, and shoots cannonballs.</small></div>
+      <div class="enemy-card"><canvas data-enemy="chicken" width="180" height="140"></canvas><b>Super Chicken</b><small>5 barrels! Shoots 5 eggs at once.</small></div>
+    </div>
+    <p class="help">Move: <b>WASD</b> or arrow keys · Aim: <b>mouse</b> · Shoot: <b>hold click</b> or <b>Space</b> · Reload: <b>R</b><br>
+      On a phone or tablet: drag on the left side to move, and touch the right side to aim and shoot.<br>
+      Only plain bullets 📦 lie around the board, but your gun turns them into the bullets you bought!</p>
+  </div>
+</section>
+
+<section class="screen" id="shop" hidden>
+  <div class="wrap">
+    <div class="top">
+      <button class="btn" id="shop-back">← Back</button>
+      <h2>🔧 Gun Workshop</h2>
+      <span class="coins">⚡ <span class="coin-count">0</span></span>
+    </div>
+    <canvas id="gun-preview"></canvas>
+    <div id="gun-stats"></div>
+    <div id="parts"></div>
+    <div class="center"><button class="btn primary big" id="shop-play">▶ Play with this gun</button></div>
+  </div>
+</section>
+
+<section class="screen" id="game" hidden>
+  <canvas id="cv"></canvas>
+  <div id="hud">
+    <div>
+      <div class="pill">❤️ <span id="hp-num">100</span><div id="hp-bar"><div id="hp-fill"></div></div></div>
+    </div>
+    <div class="pill center">🌊 Wave <span id="wave">1</span><br><span style="color:#7dd3fc">⚡ <span id="run-coins">0</span></span></div>
+    <div style="display:flex;gap:8px;align-items:flex-start">
+      <div class="pill" id="ammo"><span id="mag">8</span> / <span id="reserve">40</span><span class="bt" id="bullet-name">Regular</span></div>
+      <button class="btn" id="pause" style="margin:0;padding:8px 12px;font-size:18px">⏸</button>
+    </div>
+  </div>
+  <div id="banner" style="opacity:0"></div>
+  <button class="btn" id="reload-btn">🔄 Reload</button>
+  <div id="msg" style="opacity:0"></div>
+  <div class="overlay" id="paused" hidden>
+    <div class="panel">
+      <h2>Paused</h2>
+      <button class="btn primary" id="resume">▶ Keep going</button>
+      <button class="btn" id="quit">🏠 Quit</button>
+    </div>
+  </div>
+  <div class="overlay" id="over" hidden>
+    <div class="panel">
+      <h2>You got knocked out!</h2>
+      <p>You made it to <b>wave <span id="over-wave">1</span></b></p>
+      <p style="color:#7dd3fc">You earned <b>⚡ <span id="over-coins">0</span></b> electrocoins</p>
+      <p id="over-best" style="color:var(--muted)"></p>
+      <button class="btn primary" id="over-shop">🔧 Spend them in the Workshop</button>
+      <button class="btn" id="over-again">▶ Play again</button>
+    </div>
+  </div>
+</section>
+
+<script src="shooter.js?v=1"></script>
+<script>
+  // Browsers keep an old copy of this page for a while. Ask the site which version is newest,
+  // and if this page is older, load the new one straight away.
+  (function () {
+    var V = '1';
+    fetch('version.txt?t=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.text() : ''; })
+      .then(function (t) {
+        t = t.trim();
+        if (t && t !== V && location.search !== '?v=' + t) location.replace(location.pathname + '?v=' + t + location.hash);
+      })
+      .catch(function () { /* offline: keep playing this copy */ });
+  })();
+</script>
+</body>
+</html>
