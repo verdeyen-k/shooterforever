@@ -16,7 +16,7 @@ Build your own gun, then fight waves of animals that never stop coming.
 Press **👫 Play with friends**, make a room, and tell your friends the 4-letter code. Up to 4 players.
 
 - Everyone brings the gun from **their own** Gun Workshop. You can change your gun in the room before the game starts.
-- Everyone keeps **all** the electrocoins the team picks up.
+- Whoever picks up a coin keeps **all** of it, so be quick! Everyone still in the game gets the wave bonus.
 - If you get knocked out, you come back at the start of the next wave. The game is over when everyone is knocked out.
 - Only the host (👑) can start or restart the game. If the host leaves, the room closes.
 - Players are shown by colour (Blue, Pink, Green, Purple). There are no names and no chat.
@@ -42,6 +42,6 @@ Your electrocoins, parts and best wave save on this device.
 
 - `index.html`: the screens and styles.
 - `shooter.js`: everything else: the gun parts, the animals, the waves, drawing, sound and the online rooms.
+- `version.txt`: the newest version number. When you change the game, bump it here and in `index.html` (`?v=` on the script and `var V =`), so old copies in browsers reload themselves.
 
 Online rooms use the Firebase Realtime Database (the `kvgames` project the other games use), under `games/shooterforever/rooms/<CODE>`. The host's device runs the game and sends everyone a snapshot about 15 times a second. Everyone else sends what they're pressing. If you change what the host sends, bump `PROTOCOL` in `shooter.js`.
-- `version.txt`: the newest version number. When you change the game, bump it here and in `index.html` (`?v=` on the script and `var V =`), so old copies in browsers reload themselves.

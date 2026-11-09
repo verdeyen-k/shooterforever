@@ -133,7 +133,7 @@
 <section class="screen" id="coop" hidden>
   <div class="wrap">
     <div class="top"><button class="btn" id="co-home">← Back</button><h2>👫 Play with friends</h2><span></span></div>
-    <p class="sub" style="margin-top:12px">Up to 4 players. Everyone brings the gun from <b>their own</b> Gun Workshop, and everyone keeps all the electrocoins the team picks up!</p>
+    <p class="sub" style="margin-top:12px">Up to 4 players. Everyone brings the gun from <b>their own</b> Gun Workshop, and whoever grabs a coin keeps it, so be quick!</p>
     <div id="co-out">
       <div class="co-box"><h3>Start a room</h3><button class="btn primary" id="co-make">✨ Make a room</button></div>
       <div class="co-box"><h3>Join a friend</h3>
@@ -195,12 +195,12 @@
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="shooter.js?v=2"></script>
+<script src="shooter.js?v=3"></script>
 <script>
   // Browsers keep an old copy of this page for a while. Ask the site which version is newest,
   // and if this page is older, load the new one straight away.
   (function () {
-    var V = '2';
+    var V = '3';
     fetch('version.txt?t=' + Date.now(), { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.text() : ''; })
       .then(function (t) {

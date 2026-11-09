@@ -242,7 +242,7 @@
   } catch (e) { db = null; }
   const ROOMS = 'games/shooterforever/rooms';
   // Bump when what the host sends changes (and the version in index.html), so old and new copies don't mix.
-  const PROTOCOL = 1;
+  const PROTOCOL = 2;
   const MAX_PLAYERS = 4;
   const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const STAMP = () => firebase.database.ServerValue.TIMESTAMP;
@@ -271,7 +271,7 @@
   function makePlayer(id, slot, gun) {
     gun = cleanGun(gun);
     const p = { id, slot, gun, x: AW / 2 + (slot % 2 ? 60 : -60) * (slot ? 1 : 0), y: AH / 2 + (slot >= 2 ? 60 : 0), r: 18,
-      hp: 100, aim: 0, hurtT: 0, step: 0, down: false, mag: 0, reserve: 60, reloadT: 0, shotT: 0, rlSeen: 0 };
+      hp: 100, aim: 0, hurtT: 0, step: 0, down: false, coins: 0, mag: 0, reserve: 60, reloadT: 0, shotT: 0, rlSeen: 0 };
     p.mag = MAGS[gun.mag].size;
     return p;
   }
@@ -432,8 +432,9 @@
       G.breakT -= dt;
       if (G.breakT <= 0) {
         G.breakT = 3;
-        const bonus = G.wave * 5, p = alive()[0] || G.players[0];
-        addCoins(bonus); fx('text', p.x, p.y - 40, `Wave bonus +⚡${bonus}`, '#7dd3fc');
+        // Everyone still in the game gets the wave bonus.
+        const bonus = G.wave * 5;
+        for (const p of alive()) { addCoins(p, bonus); fx('text', p.x, p.y - 40, `Wave bonus +⚡${bonus}`, '#7dd3fc'); }
         nextWave();
       }
     }
@@ -454,7 +455,7 @@
     updateEnemies(dt);
     updateFoeShots(dt);
 
-    // Coins float to whoever is nearest. Everybody gets the coins!
+    // Coins float to whoever is nearest, and whoever picks a coin up keeps all of it.
     for (let i = G.drops.length - 1; i >= 0; i--) {
       const d = G.drops[i];
       d.t += dt;
@@ -463,7 +464,7 @@
       if (!p) { if (d.t > 25) G.drops.splice(i, 1); continue; }
       if (dist < 160 && d.t > 0.3) { d.x += (p.x - d.x) / dist * 420 * dt; d.y += (p.y - d.y) / dist * 420 * dt; }
       if (dist < p.r + 10) {
-        if (d.kind === 'coin') { addCoins(d.n); fx('snd', 'coin'); fx('text', d.x, d.y - 14, `+⚡${d.n}`, '#7dd3fc'); }
+        if (d.kind === 'coin') { addCoins(p, d.n); fx('snd', 'coin'); fx('text', d.x, d.y - 14, `+⚡${d.n}`, '#7dd3fc'); }
         else { p.hp = Math.min(100, p.hp + 25); fx('tone', 660, 0.15, 'triangle', 0.07); fx('text', d.x, d.y - 14, '+25 ❤️', '#4ade80'); }
         G.drops.splice(i, 1);
       } else if (d.t > 25) G.drops.splice(i, 1);
@@ -655,9 +656,14 @@
     p.hp -= n;
     if (!quiet || p.hurtT <= 0) { p.hurtT = 0.3; fx('hurt', p.id); }
   }
-  function addCoins(n) { G.coins += n; gotCoins(); }
-  // Everyone keeps all the coins the team picks up, in their own save.
-  function gotCoins() { if (G.coins > G.seenCoins) { save.coins += G.coins - G.seenCoins; G.seenCoins = G.coins; store(); } }
+  function addCoins(p, n) { p.coins += n; gotCoins(); }
+  // Put the coins this device's player picked up into this device's save.
+  function gotCoins() {
+    const p = meP();
+    if (!p) return;
+    G.coins = p.coins;
+    if (p.coins > G.seenCoins) { save.coins += p.coins - G.seenCoins; G.seenCoins = p.coins; store(); }
+  }
 
   function segDist(px, py, ax, ay, bx, by) {
     const ex = bx - ax, ey = by - ay, l2 = ex * ex + ey * ey, u = clamp(((px - ax) * ex + (py - ay) * ey) / l2, 0, 1);
@@ -698,8 +704,8 @@
   const arrGun = a => ({ mag: a[0], barrel: a[1], scope: a[2], bullet: listOf(a[3]).map(b => b.id) });
   function snapshot() {
     return {
-      t: r2(G.t), w: G.wave, c: G.coins, o: G.over ? 1 : 0,
-      P: G.players.map(p => [p.id, p.slot, r1(p.x), r1(p.y), r2(p.aim), Math.ceil(p.hp), p.mag, p.reserve, r2(p.reloadT), p.down ? 1 : 0, r2(p.step), gunArr(p.gun)]),
+      t: r2(G.t), w: G.wave, o: G.over ? 1 : 0,
+      P: G.players.map(p => [p.id, p.slot, r1(p.x), r1(p.y), r2(p.aim), Math.ceil(p.hp), p.mag, p.reserve, r2(p.reloadT), p.down ? 1 : 0, r2(p.step), gunArr(p.gun), p.coins]),
       E: G.enemies.map(e => [e.id, KINDS.indexOf(e.kind), r1(e.x), r1(e.y), r1(e.hp), e.max, e.face, r2(e.charge), r2(e.aim), e.cold > 0 ? 1 : 0, e.flash > 0 ? 1 : 0, r2(e.t), e.burn > 0 ? 1 : 0]),
       S: G.shots.map(s => [r1(s.x), r1(s.y), r1(s.vx), r1(s.vy), s.m]),
       F: G.foes.map(f => [r1(f.x), r1(f.y), r1(f.vx), r1(f.vy), f.ball]),
@@ -712,13 +718,14 @@
   // the host says they are, so it looks smooth between snapshots.
   function applySnapshot(s, ev) {
     if (!G || G.mode !== 'guest') return;
-    G.t = s.t; G.wave = s.w; G.coins = s.c; gotCoins();
+    G.t = s.t; G.wave = s.w;
     const oldP = new Map(G.players.map(p => [p.id, p]));
     G.players = s.P.map(a => {
       const o = oldP.get(a[0]) || { x: a[2], y: a[3], hurtT: 0, r: 18 };
       return Object.assign(o, { id: a[0], slot: a[1], tx: a[2], ty: a[3], aim: a[0] === G.me && o.aim !== undefined && !G.over ? o.aim : a[4],
-        hp: a[5], mag: a[6], reserve: a[7], reloadT: a[8], down: !!a[9], step: a[10], gun: arrGun(a[11]) });
+        hp: a[5], mag: a[6], reserve: a[7], reloadT: a[8], down: !!a[9], step: a[10], gun: arrGun(a[11]), coins: a[12] || 0 });
     });
+    gotCoins();
     const oldE = new Map(G.enemies.map(e => [e.id, e]));
     G.enemies = s.E.map(a => {
       const o = oldE.get(a[0]) || { x: a[2], y: a[3] };
