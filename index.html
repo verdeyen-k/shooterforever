@@ -78,6 +78,18 @@
   .panel { background: var(--card); border-radius: 20px; padding: 22px; text-align: center; max-width: 420px; width: 100%; }
   .panel h2 { margin: 0 0 8px; font-size: 34px; color: var(--accent); }
   .panel p { font-size: 19px; margin: 6px 0; }
+  .btn:disabled { opacity: .6; cursor: default; }
+
+  /* Play with friends */
+  .co-box { background: var(--card); border-radius: 18px; padding: 18px; margin: 14px auto; max-width: 460px; text-align: center; }
+  .co-box h3 { margin: 0 0 8px; font-size: 22px; }
+  #co-code-in { font: inherit; font-size: 28px; font-weight: 700; width: 150px; text-align: center; text-transform: uppercase; letter-spacing: 6px;
+                border-radius: 12px; border: 3px solid var(--line); background: #0b1220; color: var(--ink); padding: 6px; }
+  #co-code { font-size: 54px; font-weight: 700; letter-spacing: 10px; color: var(--accent); }
+  .co-p { display: flex; align-items: center; gap: 10px; background: #0b1220; border-radius: 12px; padding: 8px 12px; margin: 6px 0; text-align: left; flex-wrap: wrap; }
+  .co-p .dot { width: 22px; height: 22px; border-radius: 50%; flex: none; }
+  .co-gun { color: var(--muted); font-size: 14px; flex-basis: 100%; padding-left: 32px; }
+  .error { color: #fca5a5; min-height: 1.3em; text-align: center; }
 </style>
 </head>
 <body>
@@ -89,6 +101,7 @@
     <p class="center"><span class="coins">⚡ <span class="coin-count">0</span> electrocoins</span></p>
     <div class="menu">
       <button class="btn primary big" id="m-play">▶ Play</button>
+      <button class="btn" id="m-coop">👫 Play with friends</button>
       <button class="btn" id="m-shop">🔧 Gun Workshop</button>
     </div>
     <p class="center" id="best" style="color:var(--muted)"></p>
@@ -117,6 +130,31 @@
   </div>
 </section>
 
+<section class="screen" id="coop" hidden>
+  <div class="wrap">
+    <div class="top"><button class="btn" id="co-home">← Back</button><h2>👫 Play with friends</h2><span></span></div>
+    <p class="sub" style="margin-top:12px">Up to 4 players. Everyone brings the gun from <b>their own</b> Gun Workshop, and everyone keeps all the electrocoins the team picks up!</p>
+    <div id="co-out">
+      <div class="co-box"><h3>Start a room</h3><button class="btn primary" id="co-make">✨ Make a room</button></div>
+      <div class="co-box"><h3>Join a friend</h3>
+        <input id="co-code-in" maxlength="4" autocomplete="off" placeholder="CODE">
+        <button class="btn primary" id="co-join">Join</button></div>
+    </div>
+    <div id="co-in" hidden>
+      <div class="co-box">
+        <div style="color:var(--muted)">Room code: tell your friends!</div>
+        <div id="co-code">----</div>
+        <div id="co-players"></div>
+        <button class="btn" id="co-shop">🔧 My Gun Workshop</button>
+        <button class="btn primary big" id="co-start">▶ Start</button>
+        <p id="co-wait" style="color:var(--muted)">Waiting for the 👑 host to start…</p>
+        <button class="btn" id="co-leave">🚪 Leave room</button>
+      </div>
+    </div>
+    <p class="error" id="co-error"></p>
+  </div>
+</section>
+
 <section class="screen" id="game" hidden>
   <canvas id="cv"></canvas>
   <div id="hud">
@@ -126,6 +164,7 @@
     <div class="pill center">🌊 Wave <span id="wave">1</span><br><span style="color:#7dd3fc">⚡ <span id="run-coins">0</span></span></div>
     <div style="display:flex;gap:8px;align-items:flex-start">
       <div class="pill" id="ammo"><span id="mag">8</span> / <span id="reserve">40</span><span class="bt" id="bullet-name">Regular</span></div>
+      <button class="btn" id="restart" title="Restart" style="margin:0;padding:8px 12px;font-size:18px;pointer-events:auto">🔄</button>
       <button class="btn" id="pause" style="margin:0;padding:8px 12px;font-size:18px">⏸</button>
     </div>
   </div>
@@ -134,29 +173,34 @@
   <div id="msg" style="opacity:0"></div>
   <div class="overlay" id="paused" hidden>
     <div class="panel">
-      <h2>Paused</h2>
+      <h2>Menu</h2>
+      <p id="p-note" style="color:var(--muted)">The game keeps going while your friends play!</p>
       <button class="btn primary" id="resume">▶ Keep going</button>
+      <button class="btn" id="p-restart">🔄 Restart</button>
       <button class="btn" id="quit">🏠 Quit</button>
     </div>
   </div>
   <div class="overlay" id="over" hidden>
     <div class="panel">
-      <h2>You got knocked out!</h2>
+      <h2 id="over-title">You got knocked out!</h2>
       <p>You made it to <b>wave <span id="over-wave">1</span></b></p>
       <p style="color:#7dd3fc">You earned <b>⚡ <span id="over-coins">0</span></b> electrocoins</p>
       <p id="over-best" style="color:var(--muted)"></p>
       <button class="btn primary" id="over-shop">🔧 Spend them in the Workshop</button>
       <button class="btn" id="over-again">▶ Play again</button>
+      <button class="btn" id="over-room">👫 Back to the room</button>
     </div>
   </div>
 </section>
 
-<script src="shooter.js?v=1"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="shooter.js?v=2"></script>
 <script>
   // Browsers keep an old copy of this page for a while. Ask the site which version is newest,
   // and if this page is older, load the new one straight away.
   (function () {
-    var V = '1';
+    var V = '2';
     fetch('version.txt?t=' + Date.now(), { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.text() : ''; })
       .then(function (t) {
